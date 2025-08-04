@@ -17,6 +17,10 @@
     "express": "^4.18.2",
     "node-fetch": "^2.7.0"
   },
+   "engines": {
+  "node": "20.x"
+},
+
   "devDependencies": {
     "nodemon": "^3.0.1"
   }
