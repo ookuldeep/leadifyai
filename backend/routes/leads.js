@@ -1,100 +1,47 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../supabaseClient');
 const fetch = require('node-fetch');
+const { Pool } = require('pg'); // Assuming you're using pg for your database
 
-require('dotenv').config();
-
-router.post('/', async (req, res) => {
-  const { name, email, message } = req.body;
-  console.log("📥 Received lead:", { name, email, message });
-
-  if (!name || !email || !message) {
-    return res.status(400).json({ error: 'All fields are required' });
-  }
-
-  // 🔍 AI scoring prompt
-  const prompt = `Classify this sales lead as Hot, Warm, or Cold:\n\n"${message}"\n\nRespond with one word only.`;
-  let score = 'Unknown';
-
-  try {
-    const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:5000',
-      },
-      body: JSON.stringify({
-        model: 'mistralai/mistral-7b-instruct',
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant that scores lead quality.' },
-          { role: 'user', content: prompt }
-        ],
-      }),
-    });
-
-    const aiData = await aiResponse.json();
-    const raw = aiData?.choices?.[0]?.message?.content?.trim().toLowerCase();
-
-    if (typeof raw === "string") {
-      if (raw.includes("hot")) score = "Hot";
-      else if (raw.includes("warm")) score = "Warm";
-      else if (raw.includes("cold")) score = "Cold";
-    } else {
-      console.warn("⚠️ AI response was undefined or invalid:", raw);
-    }
-
-    console.log("🤖 AI Score:", score);
-  } catch (err) {
-    console.error("⚠️ AI fetch error:", err.message);
-  }
-
-  // ✅ Insert lead with AI score into Supabase
-  const { error } = await supabase
-    .from('leads')
-    .insert([{ name, email, message, score }], { returning: 'minimal' });
-
-  if (error) {
-    console.error('❌ Supabase insert error:', error);
-    return res.status(500).json({ error: 'Database insert failed' });
-  }
-
-  console.log("✅ Lead saved to Supabase.");
-  res.status(200).json({ message: 'Lead saved with AI score!' });
+// Database connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
 });
 
-router.get('/', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('leads')
-      .select('*')
-      .order('id', { ascending: false });
+// A simple endpoint to test the leads submission
+router.post('/', async (req, res) => {
+    const { name, email, message } = req.body;
 
-    if (error) {
-      console.error("❌ Supabase fetch error:", error);
-      return res.status(500).json({ error: 'Failed to fetch leads' });
+    // A simple validation
+    if (!name || !email) {
+        return res.status(400).json({ error: 'Name and email are required.' });
     }
 
-    res.status(200).json(data);
-  } catch (err) {
-    console.error("❌ Server error:", err);
-    res.status(500).json({ error: 'Server error' });
-  }
+    try {
+        // Example of using node-fetch to send data to another API (optional)
+        // const response = await fetch('https://example.com/api/send', {
+        //     method: 'POST',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({ name, email }),
+        // });
+        // const data = await response.json();
+        // console.log('Response from external API:', data);
+        
+        // Example of saving data to a PostgreSQL database
+        const result = await pool.query(
+            'INSERT INTO leads (name, email, message) VALUES ($1, $2, $3) RETURNING *',
+            [name, email, message]
+        );
+
+        res.status(201).json({ 
+            message: 'Lead submitted successfully!',
+            lead: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error submitting lead:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
 
 module.exports = router;
-
-router.delete("/:id", async (req, res) => {
-  const { id } = req.params;
-
-  const { error } = await supabase.from("leads").delete().eq("id", id);
-
-  if (error) {
-    console.error("❌ Delete error:", error);
-    return res.status(500).json({ error: "Failed to delete lead" });
-  }
-
-  res.status(200).json({ message: "Lead deleted" });
-});
-
