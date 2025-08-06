@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# Install all dependencies
+echo "🚀 Installing dependencies"
 npm install
 
-# Ensure node-fetch is installed (important)
+echo "📦 Ensuring node-fetch@2.6.1 is installed"
 npm install node-fetch@2.6.1
 
-# Start the backend server
+echo "🟢 Starting backend server..."
 npm start
