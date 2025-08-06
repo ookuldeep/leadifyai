@@ -2,6 +2,8 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+require('node-fetch'); // if you're using it
+
 
 const app = express(); // ✅ Define app FIRST
 const PORT = process.env.PORT || 5000;

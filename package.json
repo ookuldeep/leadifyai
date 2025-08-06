@@ -4,9 +4,7 @@
   "description": "Backend for LeadifyAI",
   "main": "server.js",
   "scripts": {
-  "start": "node server.js",
-  "postinstall": "npm install node-fetch"
-
+    "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
